@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 
 const cities = [
   {
@@ -23,10 +24,11 @@ export default function FeaturedCities() {
             className="block overflow-hidden rounded-lg shadow"
           >
             <div className="relative h-40 bg-gray-200">
-              <img
+              <Image
                 src={c.img}
                 alt={c.name}
-                className="w-full h-full object-cover brightness-90"
+                fill
+                className="object-cover brightness-90"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
               <div className="absolute left-4 bottom-4 text-white">
