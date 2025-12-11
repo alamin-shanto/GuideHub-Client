@@ -1,5 +1,5 @@
-import "./globals.css";
 import ClientShell from "../components/ClientShell";
+import "./globals.css";
 
 export const metadata = {
   title: "Local Guide Platform",
