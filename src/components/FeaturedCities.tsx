@@ -38,7 +38,7 @@ export default function FeaturedCities() {
                 fill
                 className="object-cover brightness-90"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent" />
               <div className="absolute left-4 bottom-4 text-white">
                 <h3 className="font-semibold text-lg">{c.name}</h3>
                 <p className="text-sm">{c.subtitle}</p>

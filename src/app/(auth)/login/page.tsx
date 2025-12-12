@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 type FormState = {
   email: string;
@@ -11,6 +12,8 @@ type FormState = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { refresh } = useAuth(); // ✅ GET refresh function from context
+
   const [form, setForm] = useState<FormState>({
     email: "",
     password: "",
@@ -18,6 +21,7 @@ export default function LoginPage() {
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const emailRef = useRef<HTMLInputElement | null>(null);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value, type, checked } = e.target;
@@ -25,6 +29,7 @@ export default function LoginPage() {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+    setError(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -37,16 +42,40 @@ export default function LoginPage() {
     }
     if (!/\S+@\S+\.\S+/.test(form.email)) {
       setError("Please enter a valid email address.");
+      emailRef.current?.focus();
       return;
     }
 
     try {
       setLoading(true);
-      await new Promise((res) => setTimeout(res, 700)); // simulate API
+      const base = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${base}/api/auth/login`, {
+        method: "POST",
+        credentials: "include", // important: include cookies
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password,
+          remember: form.remember,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(
+          (data && (data.message || data.error)) ||
+            "Login failed — please check your credentials."
+        );
+        return;
+      }
+
+      // 🚀 NEW: Immediately refresh auth state
+      await refresh(); // <— THIS FIXES NAVBAR NOT UPDATING
+
+      // Redirect AFTER refresh completes
       router.push("/dashboard");
-    } catch (error) {
-      // log for debugging and set friendly message
-      console.error(error);
+    } catch (err) {
+      console.error("Login error:", err);
       setError("Login failed — please try again.");
     } finally {
       setLoading(false);
@@ -54,7 +83,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-linear-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <div className="w-full max-w-md bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl rounded-2xl shadow-lg p-8 border border-gray-200/40 dark:border-gray-700/40 transition">
         {/* Header */}
         <div className="mb-6 text-center">
@@ -77,6 +106,7 @@ export default function LoginPage() {
               Email address
             </label>
             <input
+              ref={emailRef}
               id="email"
               name="email"
               type="email"
@@ -84,6 +114,8 @@ export default function LoginPage() {
               onChange={handleChange}
               placeholder="you@example.com"
               className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-300 outline-none"
+              autoComplete="email"
+              required
             />
           </div>
 
@@ -103,10 +135,12 @@ export default function LoginPage() {
               onChange={handleChange}
               placeholder="••••••••"
               className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-300 outline-none"
+              autoComplete="current-password"
+              required
             />
           </div>
 
-          {/* Remember / Forgot */}
+          {/* Remember me */}
           <div className="flex items-center justify-between text-sm">
             <label className="inline-flex items-center gap-2 cursor-pointer">
               <input
@@ -120,16 +154,9 @@ export default function LoginPage() {
                 Remember me
               </span>
             </label>
-
-            <button
-              type="button"
-              className="text-indigo-600 hover:underline dark:text-indigo-400"
-            >
-              Forgot password?
-            </button>
           </div>
 
-          {/* Error message */}
+          {/* Error */}
           {error && (
             <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/40 p-2 rounded-md">
               {error}
@@ -140,29 +167,34 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-md transition disabled:opacity-60"
+            className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-md transition disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            {loading ? "Signing in…" : "Sign in"}
-          </button>
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-300 dark:border-gray-700"></span>
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                or
-              </span>
-            </div>
-          </div>
-
-          {/* OAuth placeholder */}
-          <button
-            type="button"
-            className="w-full py-2.5 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-medium shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition"
-          >
-            Continue with Google
+            {loading ? (
+              <>
+                <svg
+                  className="w-4 h-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="rgba(255,255,255,0.4)"
+                    strokeWidth="4"
+                  />
+                  <path
+                    d="M22 12a10 10 0 10-10 10"
+                    stroke="white"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span>Signing in…</span>
+              </>
+            ) : (
+              "Sign in"
+            )}
           </button>
         </form>
 

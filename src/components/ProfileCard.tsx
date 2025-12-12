@@ -99,7 +99,7 @@ export default function ProfileCard({
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-            <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-indigo-600 to-pink-500 flex items-center justify-center text-white font-semibold text-xl">
+            <div className="w-20 h-20 rounded-lg bg-linear-to-br from-indigo-600 to-pink-500 flex items-center justify-center text-white font-semibold text-xl">
               {initials}
             </div>
           </div>

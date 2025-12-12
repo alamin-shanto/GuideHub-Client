@@ -3,16 +3,9 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import axios from "axios";
-import API from "@/src/lib/api";
 
-function getApiErrorMessage(data: unknown): string | undefined {
-  if (typeof data === "object" && data !== null) {
-    const d = data as Record<string, unknown>;
-    const m = d["message"];
-    if (typeof m === "string") return m;
-  }
-  return undefined;
+function isValidEmail(e: string) {
+  return /\S+@\S+\.\S+/.test(e);
 }
 
 export default function RegisterPage() {
@@ -25,10 +18,6 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  function validateEmail(e: string) {
-    return /\S+@\S+\.\S+/.test(e);
-  }
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -36,7 +25,7 @@ export default function RegisterPage() {
       toast.error("Please fill out all required fields.");
       return;
     }
-    if (!validateEmail(email)) {
+    if (!isValidEmail(email)) {
       toast.error("Please enter a valid email address.");
       return;
     }
@@ -47,31 +36,37 @@ export default function RegisterPage() {
 
     try {
       setLoading(true);
-      const { data } = await API.post("/auth/register", {
-        name: name.trim(),
-        email: email.trim(),
-        password,
-        role,
+
+      // Use NEXT_PUBLIC_API_URL (dev: http://localhost:4000, prod: your Render URL)
+      const base = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${base}/api/auth/register`, {
+        method: "POST",
+        credentials: "include", // important: accept httpOnly cookie set by backend
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+          role,
+        }),
       });
 
-      // store token (demo)
-      try {
-        localStorage.setItem("lg_token", data.token);
-      } catch {
-        // ignore storage errors in strict environments
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const msg =
+          (data && (data.message || data.error)) ||
+          `Registration failed (${res.status})`;
+        toast.error(msg);
+        return;
       }
 
+      // Registration success — backend set httpOnly cookie. Redirect to dashboard.
       toast.success("Welcome! Registration successful.");
       router.push("/dashboard");
-    } catch (err: unknown) {
-      let msg = "Registration failed";
-      if (axios.isAxiosError(err)) {
-        const serverMsg = getApiErrorMessage(err.response?.data);
-        msg = serverMsg ?? err.message ?? msg;
-      } else if (err instanceof Error) {
-        msg = err.message;
-      }
-      toast.error(msg);
+    } catch (err) {
+      console.error("Register error", err);
+      toast.error("Registration failed — please try again.");
     } finally {
       setLoading(false);
     }
@@ -95,7 +90,6 @@ export default function RegisterPage() {
           aria-label="Register form"
           noValidate
         >
-          {/* Name */}
           <div>
             <label
               htmlFor="name"
@@ -115,7 +109,6 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* Email */}
           <div>
             <label
               htmlFor="email"
@@ -135,7 +128,6 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* Password with reveal */}
           <div>
             <label
               htmlFor="password"
@@ -169,7 +161,6 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Role */}
           <fieldset className="mt-1">
             <legend className="sr-only">Account role</legend>
             <div className="flex items-center gap-4">
@@ -203,7 +194,6 @@ export default function RegisterPage() {
             </div>
           </fieldset>
 
-          {/* Submit */}
           <button
             type="submit"
             disabled={loading}
@@ -212,7 +202,6 @@ export default function RegisterPage() {
             {loading ? "Creating account…" : "Create account"}
           </button>
 
-          {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-gray-300 dark:border-gray-700"></span>
@@ -224,7 +213,6 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* OAuth placeholder */}
           <button
             type="button"
             className="w-full py-2.5 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-medium shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition"
