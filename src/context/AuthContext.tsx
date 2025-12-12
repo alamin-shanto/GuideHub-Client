@@ -1,67 +1,132 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 
-type User = {
+export type AppUser = {
   id: string;
   name: string;
   email: string;
   role: "tourist" | "guide" | "admin";
-} | null;
+};
 
-const AuthContext = createContext<{
-  user: User;
+type AuthContextType = {
+  user: AppUser | null;
   loading: boolean;
   refresh: () => Promise<void>;
   logout: () => Promise<void>;
-}>({
+};
+
+const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   refresh: async () => {},
   logout: async () => {},
 });
 
+/* -------------------------------------------
+   HELPER: Convert unknown backend responses 
+   into a clean AppUser object
+-------------------------------------------- */
+
+function toAppUser(obj: unknown): AppUser | null {
+  if (!obj || typeof obj !== "object") return null;
+
+  const raw = obj as Record<string, unknown>;
+
+  const id = (raw.id as string) || (raw._id as string); // 🔥 backend sends _id → normalize it
+
+  const name = raw.name as string;
+  const email = raw.email as string;
+  const role = raw.role as AppUser["role"];
+
+  if (!id || !name || !email || !role) return null;
+
+  return { id, name, email, role };
+}
+
+/* Extract user from any shape API returns */
+function normalizeUser(payload: unknown): AppUser | null {
+  if (!payload || typeof payload !== "object") return null;
+
+  const obj = payload as Record<string, unknown>;
+
+  // Format 1: { user: {...} }
+  if (obj.user) return toAppUser(obj.user);
+
+  // Format 2: { data: {...} }
+  if (obj.data) return toAppUser(obj.data);
+
+  // Format 3: direct object
+  const direct = toAppUser(obj);
+  if (direct) return direct;
+
+  // Format 4: nested unknown structures
+  for (const v of Object.values(obj)) {
+    const nested = toAppUser(v);
+    if (nested) return nested;
+  }
+
+  return null;
+}
+
+/* -------------------------------------------
+   PROVIDER
+-------------------------------------------- */
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`,
-        {
-          credentials: "include",
-        }
+        { credentials: "include" }
       );
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
-      } else {
+
+      if (!res.ok) {
         setUser(null);
+        setLoading(false);
+        return;
       }
-    } catch {
+
+      const data = await res.json();
+      console.log("AUTH RAW /me:", data);
+
+      const parsed = normalizeUser(data);
+      console.log("AUTH PARSED USER:", parsed);
+
+      setUser(parsed ?? null);
+    } catch (err) {
+      console.error("Auth refresh error:", err);
       setUser(null);
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  async function logout() {
+  const logout = useCallback(async () => {
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
-
+    } catch (err) {
+      console.error("Logout failed:", err);
+    } finally {
       setUser(null);
-    } catch (error) {
-      console.error("Logout failed:", error);
     }
-  }
+  }, []);
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [refresh]);
 
   return (
     <AuthContext.Provider value={{ user, loading, refresh, logout }}>
