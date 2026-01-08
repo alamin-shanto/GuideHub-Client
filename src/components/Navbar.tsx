@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 import { useState, useEffect, useRef } from "react";
 
@@ -11,6 +11,17 @@ export default function Navbar() {
   const { user, loading, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const pathname = usePathname();
+
+  const isActive = (path: string) => {
+    return pathname === path || pathname.startsWith(path + "/");
+  };
+
+  const linkClass = (active: boolean) =>
+    active
+      ? "font-semibold text-indigo-600 border-b-2 border-indigo-600"
+      : "text-gray-600 hover:text-indigo-600";
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -37,10 +48,15 @@ export default function Navbar() {
         {/* Right Side */}
         <div className="flex gap-4 items-center relative">
           {/* Always visible */}
-          <Link href="/explore">Explore Tours</Link>
-          <Link href="/register" className="hidden sm:inline">
-            Become a Guide
+          <Link href="/explore" className={linkClass(isActive("/explore"))}>
+            Explore Tours
           </Link>
+
+          {!user && (
+            <Link href="/register" className="hidden sm:inline">
+              Become a Guide
+            </Link>
+          )}
 
           {/* Loading state */}
           {loading ? (
@@ -50,6 +66,8 @@ export default function Navbar() {
               {/* Dropdown button */}
               <button
                 onClick={() => setOpen((prev) => !prev)}
+                aria-haspopup="menu"
+                aria-expanded={open}
                 className="px-3 py-1 rounded-md border border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-medium flex items-center gap-1"
               >
                 Hi, {user.name}
@@ -58,18 +76,69 @@ export default function Navbar() {
 
               {/* Dropdown menu */}
               {open && (
-                <div className="absolute right-0 mt-2 w-44 bg-white shadow-md rounded-md border py-2 animate-fadeIn z-50">
-                  <Link
-                    href="/dashboard"
-                    className="block px-4 py-2 hover:bg-gray-100"
-                    onClick={() => setOpen(false)}
-                  >
-                    Dashboard
-                  </Link>
+                <div className="absolute right-0 mt-2 w-48 bg-white shadow-md rounded-md border py-2 z-50">
+                  {/* Tourist */}
+                  {user.role === "tourist" && (
+                    <>
+                      <Link
+                        href="/dashboard/tourist"
+                        className={`block px-4 py-2 ${linkClass(
+                          isActive("/dashboard/tourist")
+                        )}`}
+                        onClick={() => setOpen(false)}
+                      >
+                        My Bookings
+                      </Link>
+                    </>
+                  )}
 
+                  {/* Guide */}
+                  {user.role === "guide" && (
+                    <>
+                      <Link
+                        href="/dashboard/guide"
+                        className={`block px-4 py-2 ${linkClass(
+                          isActive("/dashboard/guide")
+                        )}`}
+                        onClick={() => setOpen(false)}
+                      >
+                        Guide Dashboard
+                      </Link>
+                      <Link
+                        href="/dashboard/listings"
+                        className={`block px-4 py-2 ${linkClass(
+                          isActive("/dashboard/listings")
+                        )}`}
+                        onClick={() => setOpen(false)}
+                      >
+                        My Listings
+                      </Link>
+                    </>
+                  )}
+
+                  {/* Admin */}
+                  {user.role === "admin" && (
+                    <>
+                      <Link
+                        href="/dashboard/admin"
+                        className={`block px-4 py-2 ${linkClass(
+                          isActive("/dashboard/admin")
+                        )}`}
+                        onClick={() => setOpen(false)}
+                      >
+                        Admin Dashboard
+                      </Link>
+                    </>
+                  )}
+
+                  {/* Common */}
                   <Link
-                    href="/profile"
-                    className="block px-4 py-2 hover:bg-gray-100"
+                    href={`/profile/${user.id}`}
+                    className={`block px-4 py-2 ${
+                      pathname.startsWith("/profile")
+                        ? "font-semibold text-indigo-600"
+                        : "hover:bg-gray-100"
+                    }`}
                     onClick={() => setOpen(false)}
                   >
                     Profile
@@ -88,12 +157,20 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            <Link
-              href="/login"
-              className="px-3 py-1 rounded-md border border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-medium"
-            >
-              Login
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                href="/login"
+                className="px-3 py-1 rounded-md border border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-medium"
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                className="px-3 py-1 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium"
+              >
+                Register
+              </Link>
+            </div>
           )}
         </div>
       </div>
