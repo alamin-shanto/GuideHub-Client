@@ -21,10 +21,10 @@ export default function GuideDashboard() {
     async function loadStats() {
       if (!user) return;
       try {
-        const res = await API.get(`/guide/stats/${user.id}`);
+        const res = await API.get(`/api/guide/stats/${user.id}`);
         setStats(res.data);
       } catch (err) {
-        console.error("Failed to load stats", err);
+        console.log("Failed to load stats", err);
       } finally {
         setLoading(false);
       }

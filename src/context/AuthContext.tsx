@@ -55,13 +55,20 @@ function toAppUser(obj: unknown): AppUser | null {
 function normalizeUser(payload: unknown): AppUser | null {
   if (!payload || typeof payload !== "object") return null;
 
-  const obj = payload as Record<string, unknown>;
+  const obj = payload as {
+    data?: { user?: unknown };
+    user?: unknown;
+  };
 
   // Format 1: { user: {...} }
-  if (obj.user) return toAppUser(obj.user);
+  if (obj.data && obj.data.user) {
+    return toAppUser(obj.data.user);
+  }
 
   // Format 2: { data: {...} }
-  if (obj.data) return toAppUser(obj.data);
+  if (obj.user) {
+    return toAppUser(obj.user);
+  }
 
   // Format 3: direct object
   const direct = toAppUser(obj);
@@ -85,11 +92,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
+    setLoading(true);
+
     try {
       const res = await API.get("/api/auth/me");
 
       const parsed = normalizeUser(res.data);
       setUser(parsed ?? null);
+      console.log("ME RAW RESPONSE:", res.data);
+      console.log("ME PARSED USER:", parsed);
     } catch {
       setUser(null);
     } finally {

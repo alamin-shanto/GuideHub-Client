@@ -20,6 +20,7 @@ export default function ProtectedLayout({
     }
   }, [user, loading, router]);
 
+  // While auth is being checked
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -28,7 +29,15 @@ export default function ProtectedLayout({
     );
   }
 
-  if (!user) return null;
+  // Not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="text-gray-500">Redirecting to login…</span>
+      </div>
+    );
+  }
 
-  return <>{children}</>;
+  // Authenticated
+  return <main className="min-h-[70vh]">{children}</main>;
 }
