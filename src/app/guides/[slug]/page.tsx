@@ -9,20 +9,41 @@ import Link from "next/link";
 type GuideDetails = {
   id: string;
   name: string;
-  location?: string;
+  slug: string;
+  city: string;
+  country: string;
   rating?: number;
+  reviewCount?: number;
   coverImage?: string;
+  avatar?: string;
   specialty?: string;
   bio?: string;
   pricePerHour?: number;
-  routes?: string[];
-  duration?: string;
+  currency?: string;
+  availability?: string;
+  isVerified?: boolean;
+  tags?: string[];
+  languages?: string[];
+  areasCovered?: string[];
 };
 
 export default function GuideDetailsPage() {
   const { slug } = useParams<{ slug: string }>();
   const [guide, setGuide] = useState<GuideDetails | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const routePath = guide?.areasCovered?.length
+    ? guide.areasCovered.join(" → ")
+    : "Custom route based on your preferences";
+
+  // Duration based on how many areas the guide covers
+  const duration = guide?.areasCovered?.length
+    ? guide.areasCovered.length <= 3
+      ? "2–3 hours"
+      : guide.areasCovered.length <= 5
+      ? "4–5 hours"
+      : "Full-day experience (6–8 hours)"
+    : "Flexible";
 
   useEffect(() => {
     async function loadGuide() {
@@ -90,15 +111,26 @@ export default function GuideDetailsPage() {
 
               {/* Name + location overlay */}
               <div className="absolute bottom-6 left-6 right-6 text-white">
-                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                  {guide.name}
-                </h1>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                    {guide.name}
+                  </h1>
 
-                {guide.location && (
-                  <p className="mt-1 text-sm sm:text-base text-white/90">
-                    {guide.location}
-                  </p>
-                )}
+                  {guide.isVerified && (
+                    <span className="rounded-full bg-emerald-500/90 px-3 py-1 text-xs font-semibold">
+                      ✔ Verified
+                    </span>
+                  )}
+                </div>
+
+                <p className="mt-1 text-sm sm:text-base text-white/90">
+                  {guide.city}, {guide.country}
+                  {guide.rating && (
+                    <span className="ml-3 text-yellow-300 font-semibold">
+                      ★ {guide.rating} ({guide.reviewCount})
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
 
@@ -123,45 +155,101 @@ export default function GuideDetailsPage() {
                   </p>
                 </div>
               )}
+
+              {guide.languages && (
+                <div className="mt-6 flex flex-wrap gap-2">
+                  {guide.languages.map((lang) => (
+                    <span
+                      key={lang}
+                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
+                    >
+                      {lang}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {guide.tags && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {guide.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
 
           {/* ================= Tour details ================= */}
-          <section className="rounded-3xl bg-white shadow-sm p-8 sm:p-10">
-            <h2 className="text-xl font-semibold text-gray-900 mb-10">
-              Tour details
+          <section className="rounded-3xl bg-white shadow-sm p-8 sm:p-10 space-y-12">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Tour experience
             </h2>
 
-            <div className="grid gap-8 sm:grid-cols-3">
+            {/* ================= Areas Covered ================= */}
+            {guide.areasCovered && (
+              <div>
+                <p className="text-sm font-medium text-gray-500 mb-5">
+                  Areas covered
+                </p>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {guide.areasCovered.map((area) => (
+                    <div
+                      key={area}
+                      className="rounded-xl bg-gray-50 px-4 py-3 text-sm font-medium text-gray-800"
+                    >
+                      📍 {area}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ================= Tour meta ================= */}
+            <div className="grid sm:grid-cols-3 gap-6">
               {/* Duration */}
-              <div className="rounded-2xl bg-gray-50 p-5">
+              <div className="rounded-2xl bg-gray-50 p-6">
                 <p className="text-xs uppercase tracking-wide text-gray-500">
                   Duration
                 </p>
                 <p className="mt-2 text-lg font-semibold text-gray-900">
-                  {guide.duration || "Flexible"}
+                  {duration}
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  Based on number of locations covered
                 </p>
               </div>
 
-              {/* Routes */}
-              <div className="rounded-2xl bg-gray-50 p-5">
+              {/* Route */}
+              <div className="rounded-2xl bg-gray-50 p-6">
                 <p className="text-xs uppercase tracking-wide text-gray-500">
-                  Routes
+                  Route
                 </p>
                 <p className="mt-2 text-sm font-medium text-gray-900 leading-relaxed">
-                  {guide.routes?.join(", ") || "Custom routes available"}
+                  {routePath}
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  Optimized for walking & sightseeing
                 </p>
               </div>
 
               {/* Pricing */}
-              <div className="rounded-2xl bg-gray-50 p-5">
-                <p className="text-xs uppercase tracking-wide text-gray-500">
-                  Pricing
+              <div className="rounded-2xl bg-indigo-50 p-6">
+                <p className="text-xs uppercase tracking-wide text-indigo-600">
+                  Price
                 </p>
-                <p className="mt-2 text-lg font-semibold text-gray-900">
+                <p className="mt-2 text-2xl font-extrabold text-indigo-700">
                   {guide.pricePerHour
                     ? `$${guide.pricePerHour} / hour`
-                    : "Contact for pricing"}
+                    : "Custom pricing"}
+                </p>
+                <p className="mt-1 text-sm text-indigo-600">
+                  No hidden fees · Pay after confirmation
                 </p>
               </div>
             </div>
